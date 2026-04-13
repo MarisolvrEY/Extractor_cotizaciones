@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from src.utils.file_utils import collect_pdfs, save_json, load_json, load_prompt
+from src.utils.file_utils import collect_files, save_json, load_json, load_prompt
 
 
 class TestCollectPdfs:
@@ -17,12 +17,12 @@ class TestCollectPdfs:
         (tmp_path / "a.pdf").write_bytes(b"%PDF")
         (tmp_path / "b.pdf").write_bytes(b"%PDF")
         (tmp_path / "notas.txt").write_text("hola")
-        result = collect_pdfs(tmp_path)
+        result = collect_files(tmp_path)
         assert len(result) == 2
         assert all(p.suffix == ".pdf" for p in result)
 
     def test_empty_dir_returns_empty_list(self, tmp_path):
-        result = collect_pdfs(tmp_path)
+        result = collect_files(tmp_path)
         assert result == []
 
     def test_skips_oversized_files(self, tmp_path, monkeypatch):
@@ -33,7 +33,7 @@ class TestCollectPdfs:
         monkeypatch.setattr(
             "src.utils.file_utils.MAX_BYTES", 0
         )
-        result = collect_pdfs(tmp_path)
+        result = collect_files(tmp_path)
         assert result == []
 
 

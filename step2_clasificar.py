@@ -71,13 +71,13 @@ def clasificar(
 
         if cls.is_cotizacion:
             # Buscar el PDF original por nombre
-            pdf_origen = src_pdfs / file_name
-            if not pdf_origen.exists():
+            pdf_origen = next((f for f in src_pdfs.rglob(file_name) if f.is_file()), None)
+            if not pdf_origen:
                 logger.warning(f"  ⚠ PDF no encontrado: {pdf_origen}")
                 sin_pdf += 1
                 continue
 
-            shutil.copy2(pdf_origen, dst / file_name)
+            shutil.copy2(pdf_origen, dst / pdf_origen.name)
             logger.info(
                 f"  [green]✓ COTIZACIÓN[/green]  {file_name}  "
                 f"│ keywords: {cls.matched_keywords}"

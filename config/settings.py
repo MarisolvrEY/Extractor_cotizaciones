@@ -36,6 +36,7 @@ class Settings:
     # ── Paths ─────────────────────────────────────────────────────────────
     ROOT_DIR: Path           = _ROOT
     INPUT_DIR: Path          = _ROOT / os.getenv("INPUT_DIR",          "data/input")
+    PROCESABLES_DIR: Path          = _ROOT / os.getenv("PROCESABLES_DIR",      "data/procesables")
     COTIZACIONES_DIR: Path   = _ROOT / os.getenv("COTIZACIONES_DIR",   "data/cotizaciones_encontradas")
     OUTPUT_OCR_DIR: Path     = _ROOT / os.getenv("OUTPUT_OCR_DIR",     "data/output/json")
     OUTPUT_CAMPOS_DIR: Path  = _ROOT / os.getenv("OUTPUT_CAMPOS_DIR",  "data/output/campos")
@@ -43,7 +44,7 @@ class Settings:
     PROMPTS_DIR: Path        = _ROOT / os.getenv("PROMPTS_DIR",        "prompts")
 
     # ── Pipeline ──────────────────────────────────────────────────────────
-    MAX_PDF_SIZE_MB: int = int(os.getenv("MAX_PDF_SIZE_MB", "50"))
+    MAX_FILE_SIZE_MB: int = int(os.getenv("MAX_FILE_SIZE_MB", "50"))
     LOG_LEVEL: str       = os.getenv("LOG_LEVEL", "INFO")
 
     # ── Keywords para detectar cotizaciones ───────────────────────────────
@@ -79,6 +80,7 @@ class Settings:
 
     def ensure_dirs(self) -> None:
         for d in (
+            self.PROCESABLES_DIR,
             self.INPUT_DIR, self.COTIZACIONES_DIR,
             self.OUTPUT_OCR_DIR, self.OUTPUT_CAMPOS_DIR,
             self.OUTPUT_TABLES_DIR,

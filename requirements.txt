@@ -1,4 +1,7 @@
 # HTTP — para las REST APIs de Azure AI Foundry
+
+# Emails (.msg de Outlook) — opcional, solo si tienes archivos .msg
+extract-msg>=0.48.0
 requests>=2.32.0
 
 # Data
