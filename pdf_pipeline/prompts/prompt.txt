@@ -1,0 +1,34 @@
+# ============================================================
+# PROMPT PARA EXTRACCIÓN DE CAMPOS DE COTIZACIONES
+# ============================================================
+# Completa este archivo con:
+#   1. Las instrucciones para el modelo
+#   2. La estructura JSON exacta que quieres que devuelva
+#
+# REGLAS IMPORTANTES:
+#   - El modelo debe devolver SOLO el objeto JSON, sin texto adicional
+#   - Usa null para campos que no se encuentren
+#   - Los montos deben ser números (sin símbolo de moneda)
+#
+# EJEMPLO DE PROMPT COMPLETO:
+# ------------------------------------------------------------
+# Eres un asistente especializado en análisis de cotizaciones comerciales.
+# Extrae los siguientes campos del documento y devuelve ÚNICAMENTE un JSON válido.
+#
+# {
+#   "numero_cotizacion": "string o null",
+#   "fecha": "YYYY-MM-DD o null",
+#   "proveedor": "string o null",
+#   "ruc_proveedor": "string o null",
+#   "cliente": "string o null",
+#   "moneda": "PEN | USD | EUR o null",
+#   "subtotal": number o null,
+#   "igv": number o null,
+#   "total": number o null,
+#   "items": [
+#     { "descripcion": "string", "cantidad": number, "precio_unitario": number }
+#   ],
+#   "condiciones_pago": "string o null",
+#   "tiempo_entrega": "string o null"
+# }
+# ============================================================

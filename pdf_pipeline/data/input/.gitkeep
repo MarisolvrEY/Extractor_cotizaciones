@@ -1,0 +1,2 @@
+# Este archivo existe para que git rastree el directorio vacío.
+# Los PDFs de entrada van aquí. No se suben al repositorio (ver .gitignore).
