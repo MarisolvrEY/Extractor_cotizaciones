@@ -1,19 +1,23 @@
 """
 src/processing/llm_azure.py
 ----------------------------
-Envía el texto de una cotización al LLM desplegado en Azure AI Foundry
+Envía el texto de una cotización al LLM de Azure AI Foundry
 y retorna los campos extraídos como dict.
 
-Usa la API REST de Azure OpenAI / AI Foundry (compatible con OpenAI format).
-Endpoint esperado:
-  Azure OpenAI:  https://<resource>.openai.azure.com/
-  Serverless:    https://<endpoint>.inference.ai.azure.com/
+Soporta dos tipos de endpoint:
+
+  1. AI Foundry Project (Target URI en AI Foundry):
+       https://xxx.azure.com/api/projects/<project>/openai/v1/responses
+       → se reemplaza el sufijo por /chat/completions automáticamente
+
+  2. Azure OpenAI clásico:
+       https://<resource>.openai.azure.com/
+       → se construye la URL completa con deployment y api-version
 """
 from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from typing import Any
 
 import requests
@@ -26,17 +30,30 @@ logger = get_logger(__name__, settings.LOG_LEVEL)
 
 
 def _chat_url() -> str:
-    base = settings.AZURE_LLM_ENDPOINT.rstrip("/")
+    """
+    Construye la URL de chat/completions según el tipo de endpoint.
+
+    AI Foundry Project  → detectado por /api/projects/ en la URL
+    Azure OpenAI clásico → cualquier otro formato
+    """
+    endpoint = settings.AZURE_LLM_ENDPOINT.rstrip("/")
+
+    if "/api/projects/" in endpoint:
+        # Quitar cualquier sufijo de acción que pueda venir en el Target URI
+        base = re.sub(r"/(responses|chat/completions|completions)$", "", endpoint)
+        return f"{base}/chat/completions"
+
+    # Azure OpenAI clásico
     return (
-        f"{base}/openai/deployments/{settings.AZURE_LLM_DEPLOYMENT}"
+        f"{endpoint}/openai/deployments/{settings.AZURE_LLM_DEPLOYMENT}"
         f"/chat/completions?api-version={settings.AZURE_LLM_API_VERSION}"
     )
 
 
 def _headers() -> dict[str, str]:
     return {
-        "api-key": settings.AZURE_LLM_KEY,
-        "Content-Type": "application/json",
+        "api-key":       settings.AZURE_LLM_KEY,
+        "Content-Type":  "application/json",
     }
 
 
@@ -59,34 +76,22 @@ def _call(system_prompt: str, user_content: str) -> str:
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_content},
         ],
-        "max_tokens":   settings.AZURE_LLM_MAX_TOKENS,
-        "temperature":  settings.AZURE_LLM_TEMPERATURE,
+        "max_tokens":      settings.AZURE_LLM_MAX_TOKENS,
+        "temperature":     settings.AZURE_LLM_TEMPERATURE,
         "response_format": {"type": "json_object"},
     }
-    resp = requests.post(_chat_url(), headers=_headers(), json=payload, timeout=60)
+    url  = _chat_url()
+    resp = requests.post(url, headers=_headers(), json=payload, timeout=60)
     resp.raise_for_status()
     return resp.json()["choices"][0]["message"]["content"]
 
 
-def run_llm(
-    ocr_result: dict[str, Any],
-    system_prompt: str,
-) -> dict[str, Any]:
+def run_llm(ocr_result: dict[str, Any], system_prompt: str) -> dict[str, Any]:
     """
     Procesa una cotización con el LLM.
 
-    Args:
-        ocr_result:    Resultado de azure_ocr.extract_pdf()
-        system_prompt: Texto del prompt (leído desde prompts/)
-
     Returns:
-        {
-          file_name,
-          llm_status: "success" | "error",
-          campos: dict,          ← campos extraídos por el LLM
-          error_message: str | None,
-          raw_response: str,
-        }
+        { file_name, llm_status, campos, error_message, raw_response }
     """
     file_name = ocr_result.get("file_name", "unknown")
     logger.info(f"  LLM → {file_name}")

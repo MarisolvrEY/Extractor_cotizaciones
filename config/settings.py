@@ -17,6 +17,9 @@ class Settings:
     # ── Azure AI Content Understanding (OCR) ─────────────────────────────
     # Endpoint del recurso en AI Foundry:
     #   https://<resource>.services.ai.azure.com/
+    METADATA_XLSX_NAME: str     = os.getenv("METADATA_XLSX_NAME", "metadata")
+
+    # ── Azure AI Content Understanding (OCR) ─────────────────────────────
     AZURE_OCR_ENDPOINT: str   = os.getenv("AZURE_OCR_ENDPOINT", "")
     AZURE_OCR_KEY: str        = os.getenv("AZURE_OCR_KEY", "")
     AZURE_OCR_ANALYZER: str   = os.getenv("AZURE_OCR_ANALYZER", "prebuilt-read")
@@ -39,7 +42,8 @@ class Settings:
     PROCESABLES_DIR: Path          = _ROOT / os.getenv("PROCESABLES_DIR",      "data/procesables")
     COTIZACIONES_DIR: Path   = _ROOT / os.getenv("COTIZACIONES_DIR",   "data/cotizaciones_encontradas")
     OUTPUT_OCR_DIR: Path     = _ROOT / os.getenv("OUTPUT_OCR_DIR",     "data/output/json")
-    OUTPUT_CAMPOS_DIR: Path  = _ROOT / os.getenv("OUTPUT_CAMPOS_DIR",  "data/output/campos")
+    OUTPUT_CAMPOS_DIR: Path     = _ROOT / os.getenv("OUTPUT_CAMPOS_DIR",     "data/output/campos")
+    OUTPUT_METADATOS_DIR: Path  = _ROOT / os.getenv("OUTPUT_METADATOS_DIR",  "data/output/metadatos")
     OUTPUT_TABLES_DIR: Path  = _ROOT / os.getenv("OUTPUT_TABLES_DIR",  "data/output/tables")
     PROMPTS_DIR: Path        = _ROOT / os.getenv("PROMPTS_DIR",        "prompts")
 

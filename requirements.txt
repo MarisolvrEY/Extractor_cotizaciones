@@ -1,5 +1,8 @@
 # HTTP — para las REST APIs de Azure AI Foundry
 
+# Archivos comprimidos
+rarfile>=4.1.0        # para .rar (requiere también unrar instalado en el sistema)
+
 # Emails (.msg de Outlook) — opcional, solo si tienes archivos .msg
 extract-msg>=0.48.0
 requests>=2.32.0
@@ -22,3 +25,13 @@ pytest-mock>=3.12.0
 
 # Typing
 typing-extensions>=4.11.0
+
+# Metadatos (step3_metadatos.py / meta_1.py)
+Pillow>=10.0.0
+piexif>=1.1.3
+pypdf>=4.0.0
+python-docx>=1.1.0
+python-pptx>=0.6.23
+mutagen>=1.47.0
+xlrd>=2.0.1
+ebooklib>=0.18

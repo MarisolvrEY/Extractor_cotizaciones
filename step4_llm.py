@@ -36,7 +36,7 @@ from src.processing.llm_azure import run_llm
 from src.utils.file_utils import save_json
 from src.utils.logger import get_logger
 
-logger = get_logger("paso3", settings.LOG_LEVEL)
+logger = get_logger("paso4", settings.LOG_LEVEL)
 
 
 def _load_ocr_json(file_name: str, json_dir: Path) -> dict | None:
@@ -108,7 +108,7 @@ def procesar(
     dst_tbl  = tables_dir       or settings.OUTPUT_TABLES_DIR
 
     logger.info("=" * 60)
-    logger.info("  PASO 3 — LLM Azure AI Foundry")
+    logger.info("  PASO 4 — LLM Azure AI Foundry")
     logger.info("=" * 60)
     logger.info(f"  Cotizaciones : {src}")
     logger.info(f"  Prompt       : prompts/{prompt_file}")

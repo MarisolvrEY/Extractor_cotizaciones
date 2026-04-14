@@ -1,4 +1,4 @@
-.PHONY: install paso0 paso1 paso2 paso3 run test clean
+.PHONY: install paso0 paso1 paso2 paso3 paso4 run test clean
 
 install:
 	pip install -r requirements.txt
@@ -14,7 +14,10 @@ paso2:
 	python step2_clasificar.py
 
 paso3:
-	python step3_llm.py
+	python step3_metadatos.py
+
+paso4:
+	python step4_llm.py
 
 run:
 	python main.py
