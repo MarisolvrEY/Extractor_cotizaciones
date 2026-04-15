@@ -26,6 +26,11 @@ pytest-mock>=3.12.0
 # Typing
 typing-extensions>=4.11.0
 
+# Conversión email → PDF (step0_preparar.py)
+weasyprint>=60.0      # mejor calidad HTML→PDF (recomendado)
+# xhtml2pdf>=0.2.16  # alternativa a weasyprint
+# fpdf2>=2.7.9       # fallback solo-texto
+
 # Metadatos (step3_metadatos.py / meta_1.py)
 Pillow>=10.0.0
 piexif>=1.1.3
