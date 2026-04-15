@@ -36,6 +36,8 @@ data/input/*.pdf
 data/output/json/*.json
 data/output/reports/*.xlsx
 data/output/tables/*.csv
+data/procesables/
+data/input/
 
 # Logs
 logs/
