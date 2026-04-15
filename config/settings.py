@@ -51,17 +51,32 @@ class Settings:
     MAX_FILE_SIZE_MB: int = int(os.getenv("MAX_FILE_SIZE_MB", "50"))
     LOG_LEVEL: str       = os.getenv("LOG_LEVEL", "INFO")
 
-    # ── Keywords para detectar cotizaciones ───────────────────────────────
+    # ── Keywords de clasificación (raíces) ───────────────────────────────
+    # Usar RAÍCES para cubrir todas las conjugaciones y derivados.
+    # El clasificador normaliza el texto (sin acentos, minúsculas) antes
+    # de buscar, así que no hace falta duplicar con/sin tilde.
+    #
+    # Cobertura por raíz:
+    #   "cotiz"      → cotizar, cotización, cotizaciones, cotizado, cotizando
+    #   "proform"    → proforma, proformas, pro forma
+    #   "presupuest" → presupuesto, presupuestos, presupuestar, presupuestado
+    #   "ofert"      → oferta, ofertas, ofertar, ofertado
+    #   "propuest"   → propuesta, propuestas comerciales / económicas
+    #   "tarif"      → tarifa, tarifas, tarifario
+    #   "valoriz"    → valorización, valorizar, valorizado
+    #   "preci"      → precio, precios, lista de precios
+    #   "quot"       → quote, quotation, quoted  (inglés)
     COTIZACION_KEYWORDS: list[str] = [
-        "proforma", "pro forma",
-        "cotización", "cotizacion", "cotizaciones",
-        "presupuesto",
-        "oferta económica", "oferta economica",
-        "propuesta comercial",
-        "propuesta económica", "propuesta economica",
-        "quote", "quotation",
-        "precio referencial",
-        "lista de precios",
+        "cotiz",        # cotizar, cotización, cotizaciones, cotizado
+        "proform",      # proforma, proformas
+        "pro forma",    # pro forma (con espacio — frase exacta)
+        "presupuest",   # presupuesto, presupuestos, presupuestar
+        "ofert",        # oferta, ofertas, ofertar
+        "propuest",     # propuesta, propuestas comerciales/económicas
+        "tarif",        # tarifa, tarifas, tarifario
+        "valoriz",      # valorización, valorizar
+        "preci",        # precio, precios, lista de precios
+        "quot",         # quote, quotation (inglés)
     ]
 
     def validate_paso1(self) -> None:

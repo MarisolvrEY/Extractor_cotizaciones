@@ -1,16 +1,22 @@
 """
 src/classification/document_classifier.py
 ------------------------------------------
-Clasifica documentos extraídos como "cotización" o "otro"
-basándose en la presencia de palabras clave en el texto completo.
+Clasifica documentos como "cotización" o "otro" buscando keywords
+en el texto extraído por OCR.
 
-La lógica es deliberadamente simple y determinista (sin IA) para
-que sea rápida, trazable y no dependa de llamadas externas.
+Estrategia — opción 3 (más robusta):
+  1. Normaliza el texto: quita acentos, pasa a minúsculas
+     → "Cotización", "COTIZACION", "cotizaciòn" (OCR con error) son equivalentes
+  2. Usa raíces en las keywords (no palabras completas)
+     → "cotiz" detecta cotizar, cotización, cotizaciones, cotizado, cotizando…
+  3. \b solo al inicio del patrón
+     → evita falsos positivos pero permite sufijos libres
 """
 
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any
 
 from config import settings
@@ -18,58 +24,89 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__, settings.LOG_LEVEL)
 
-# Pre-compila el patrón con todas las keywords (case-insensitive)
-_KEYWORDS_PATTERN: re.Pattern = re.compile(
-    r"\b(" + "|".join(re.escape(kw) for kw in settings.COTIZACION_KEYWORDS) + r")\b",
+
+# ── Normalización ─────────────────────────────────────────────────────────────
+
+def _normalizar(texto: str) -> str:
+    """
+    Quita tildes/acentos y convierte a minúsculas.
+    "Cotización" → "cotizacion"
+    "PRESUPUÉSTO" → "presupuesto"
+    "proformá"   → "proforma"   (OCR con error de tilde)
+    """
+    return (
+        unicodedata.normalize("NFD", texto.lower())
+        .encode("ascii", "ignore")
+        .decode()
+    )
+
+
+# ── Compilar patrón con keywords normalizadas ─────────────────────────────────
+# Se normaliza cada keyword igual que el texto → comparación siempre consistente
+# Se usa \b solo al inicio para que "cotiz" matchee "cotización" (sufijo libre)
+
+_KEYWORDS_NORM: list[str] = [_normalizar(kw) for kw in settings.COTIZACION_KEYWORDS]
+
+# Separar keywords en dos grupos:
+#   - raíces (una sola palabra): usan \b al inicio
+#   - frases (contienen espacio): búsqueda literal sin \b
+_stems  = [kw for kw in _KEYWORDS_NORM if " " not in kw]
+_phrases = [kw for kw in _KEYWORDS_NORM if " " in kw]
+
+_parts: list[str] = []
+if _stems:
+    _parts.append(r"\b(" + "|".join(re.escape(s) for s in _stems) + r")")
+if _phrases:
+    _parts.append(r"(" + "|".join(re.escape(p) for p in _phrases) + r")")
+
+_PATTERN: re.Pattern = re.compile(
+    "|".join(_parts),
     flags=re.IGNORECASE,
 )
 
 
-class ClassificationResult:
-    """Resultado inmutable de la clasificación de un documento."""
+# ── Resultado ─────────────────────────────────────────────────────────────────
 
+class ClassificationResult:
     def __init__(
         self,
-        file_name: str,
-        is_cotizacion: bool,
+        file_name:        str,
+        is_cotizacion:    bool,
         matched_keywords: list[str],
-        confidence_note: str,
+        confidence_note:  str,
     ) -> None:
-        self.file_name = file_name
-        self.is_cotizacion = is_cotizacion
+        self.file_name        = file_name
+        self.is_cotizacion    = is_cotizacion
         self.matched_keywords = matched_keywords
-        self.confidence_note = confidence_note
+        self.confidence_note  = confidence_note
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "file_name": self.file_name,
-            "is_cotizacion": self.is_cotizacion,
+            "file_name":        self.file_name,
+            "is_cotizacion":    self.is_cotizacion,
             "matched_keywords": self.matched_keywords,
-            "confidence_note": self.confidence_note,
+            "confidence_note":  self.confidence_note,
         }
 
     def __repr__(self) -> str:
         label = "COTIZACIÓN" if self.is_cotizacion else "OTRO"
-        return (
-            f"<ClassificationResult [{label}] "
-            f"file={self.file_name!r} "
-            f"keywords={self.matched_keywords}>"
-        )
+        return f"<ClassificationResult [{label}] file={self.file_name!r} keywords={self.matched_keywords}>"
 
+
+# ── Clasificador ──────────────────────────────────────────────────────────────
 
 def classify_document(extraction_result: dict[str, Any]) -> ClassificationResult:
     """
-    Analiza el texto de un documento extraído y decide si es una cotización.
+    Clasifica un documento como cotización o no.
 
-    Args:
-        extraction_result: Salida de azure_ocr.extract_pdf()
-
-    Returns:
-        ClassificationResult con veredicto y keywords encontradas.
+    Proceso:
+      1. Lee full_text del resultado de OCR
+      2. Normaliza (sin acentos, minúsculas)
+      3. Busca raíces de keywords en el texto normalizado
+      4. Retorna ClassificationResult con veredicto y matches encontrados
     """
     file_name: str = extraction_result.get("file_name", "unknown")
 
-    # Si la extracción falló, no se puede clasificar
     if extraction_result.get("extraction_status") != "success":
         logger.warning(f"  ⚠ {file_name}: extracción fallida, marcado como OTRO.")
         return ClassificationResult(
@@ -79,25 +116,30 @@ def classify_document(extraction_result: dict[str, Any]) -> ClassificationResult
             confidence_note="Extracción fallida, no clasificable.",
         )
 
-    full_text: str = extraction_result.get("full_text", "")
-    matches = _KEYWORDS_PATTERN.findall(full_text)
+    raw_text:  str = extraction_result.get("full_text", "")
+    norm_text: str = _normalizar(raw_text)
+
+    matches = _PATTERN.findall(norm_text)
 
     # Dedup preservando orden de aparición
-    seen: set[str] = set()
+    seen:           set[str]  = set()
     unique_matches: list[str] = []
     for m in matches:
         key = m.lower()
         if key not in seen:
             seen.add(key)
-            unique_matches.append(m.lower())
+            unique_matches.append(key)
 
     is_cotizacion = len(unique_matches) > 0
 
     if is_cotizacion:
-        note = f"Encontradas {len(matches)} coincidencia(s) de {len(unique_matches)} keyword(s) única(s)."
+        note = (
+            f"Encontradas {len(matches)} coincidencia(s) "
+            f"de {len(unique_matches)} keyword(s) única(s)."
+        )
         logger.info(f"  → {file_name}: [green]COTIZACIÓN[/green] — {unique_matches}")
     else:
-        note = "Ninguna keyword de cotización encontrada."
+        note = "Ninguna keyword encontrada (texto normalizado)."
         logger.info(f"  → {file_name}: [dim]OTRO[/dim]")
 
     return ClassificationResult(
@@ -111,25 +153,16 @@ def classify_document(extraction_result: dict[str, Any]) -> ClassificationResult
 def filter_cotizaciones(
     extraction_results: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], list[ClassificationResult]]:
-    """
-    Filtra una lista de resultados de extracción y retorna solo los
-    documentos clasificados como cotización.
-
-    Returns:
-        (cotizaciones, all_classifications)
-        - cotizaciones: subconjunto de extraction_results que son cotizaciones
-        - all_classifications: clasificación de TODOS los documentos
-    """
+    """Filtra y retorna solo los documentos clasificados como cotización."""
     logger.info(f"Clasificando {len(extraction_results)} documento(s)…")
 
     all_classifications: list[ClassificationResult] = []
-    cotizaciones: list[dict[str, Any]] = []
+    cotizaciones:        list[dict[str, Any]]        = []
 
     for doc in extraction_results:
         cls = classify_document(doc)
         all_classifications.append(cls)
         if cls.is_cotizacion:
-            # Enriquecemos el doc con metadatos de clasificación
             cotizaciones.append({**doc, "classification": cls.to_dict()})
 
     logger.info(
