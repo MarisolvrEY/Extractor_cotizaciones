@@ -368,13 +368,11 @@ def preparar(
                 else:
                     escritos, meta = _procesar_msg(archivo, dst)
 
-                # Guardar _emailmeta.json para que step1 lo fusione
-                principales = [e for e in escritos if e.suffix.lower() in (".pdf", ".txt")]
-                if principales:
-                    meta_path = dst / f"{principales[0].stem}_emailmeta.json"
-                    meta_path.write_text(
-                        json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
-                    )
+                # Guardar _emailmeta.json con el mismo nombre base del email original
+                meta_path = dst / f"{archivo.stem}_emailmeta.json"
+                meta_path.write_text(
+                    json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
+                )
 
                 n_adj = len([e for e in escritos if e.suffix.lower() not in (".pdf", ".txt")])
                 logger.info(

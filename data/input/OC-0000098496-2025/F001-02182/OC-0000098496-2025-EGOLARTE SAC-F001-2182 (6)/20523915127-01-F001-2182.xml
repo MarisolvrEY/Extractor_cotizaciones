@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
+  <ext:UBLExtensions>
+    <ext:UBLExtension>
+      <ext:ExtensionContent><ds:Signature Id="signatureFACTURALOPERU">
+  <ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+    <ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+  <ds:Reference URI=""><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><ds:DigestValue>xjGiBIoP1Wr+pO3QKW5y9n/K9TE=</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue>S0AtUDYRnxWRxL5y03pMysFt/zDtnMNuXiTeKkXdR0qw7Yg68Fyr9t/vkZ/T5IGCYlY7/cfJfh12KomG9+dMPzIYOMFZsZdTldLgP4mGRynjZi4OAHvvSvg1xWQC0eY3HCPAbiY+gLupqSa6ABDqyRHGpodK7Ds0tmxm3WckyAmNBHVj/DqHXpxnSmPcajY30dNNkIwFh2LPgQdUjKdplIH+rd3BzWdD1KIsXolXgGNKBccPT0pj3O0aza4If9fzKlTdlRsKZ5IRu1GvO7ZbmO31yL8nzTiQpNXSr8eEJLEvPbmbWAhK/VlpEEf+eZ23sBx8EApGZLoLFYPsRI7kBQ==</ds:SignatureValue>
+<ds:KeyInfo><ds:X509Data><ds:X509Certificate>MIIFcTCCBFmgAwIBAgIIBM94EyHx7+IwDQYJKoZIhvcNAQELBQAwRjEkMCIGA1UEAwwbTGxhbWEucGUgU0hBMjU2IFN0YW5kYXJkIENBMREwDwYDVQQKDAhMTEFNQS5QRTELMAkGA1UEBhMCUEUwHhcNMjMwODMxMTMwMjEyWhcNMjYwODMwMTMwMjAwWjCCARUxJjAkBgNVBAkMHUpSLiBNQU5VRUwgSkFSQU1JTExPIE5STy4gODg1MSQwIgYJKoZIhvcNAQkBFhVlZ29sYXJ0ZXNhY0BnbWFpbC5jb20xLDAqBgNVBAMMI1NPRlRXQVJFIERFIEZBQ1RVUkFDSU9OIEVMRUNUUk9OSUNBMSwwKgYDVQQLDCNGQUNUVVJBIEVMRUNUUk9OSUNBIFJVQyAyMDUyMzkxNTEyNzEhMB8GA1UECwwYVmFsaWRhZG8gcG9yIExsYW1hLnBlIEVSMSowKAYDVQQKDCFFR09MQVJURSBTT0NJRURBRCBBTk9OSU1BIENFUlJBREExDTALBgNVBAcMBExJTUExCzAJBgNVBAYTAlBFMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArQSpttjYKpsaHSScK9wlq+Q6aBjjKNYyvempKHJx+yDwG88XdVKX1LPwjpZVF7yoTolZpN18lJ1L1kXjnfIZicCkn6S/HnNnyVnjbz+LJicgBiANJMweKJmZdA8QYYmgkgaauj3s3J5h8MfPD/W1Wi3D5DJQn9lSl3RvC1vHUtogEy66+aIDZEE7IZRMTCcRe+epChM5IY7LSgl00ok8ubE8DI7EDE3e5+zU66ipjPc05SRSy51wK1ZGJtWwx2+IOF2itkLGdezvI3s9O8HDoYO6OsUYNrQhakXYE3gf8P47yEJwLKX7dPT1KGag0F7wGPaTtK/1Y7IIT0b+W601FwIDAQABo4IBkDCCAYwwDAYDVR0TAQH/BAIwADAfBgNVHSMEGDAWgBRdiFut62X7/mii5NlvPVdyou8rmTBnBggrBgEFBQcBAQRbMFkwNQYIKwYBBQUHMAKGKWh0dHA6Ly9jcnQubGxhbWEucGUvbGxhbWFwZXN0YW5kYXJkY2EuY2VyMCAGCCsGAQUFBzABhhRodHRwOi8vb2NzcC5sbGFtYS5wZTAgBgNVHREEGTAXgRVlZ29sYXJ0ZXNhY0BnbWFpbC5jb20wRgYDVR0gBD8wPTA7Bg0rBgEEAYOXdwABAAMBMCowKAYIKwYBBQUHAgEWHGh0dHBzOi8vbGxhbWEucGUvcmVwb3NpdG9yeS8wHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMEMDoGA1UdHwQzMDEwL6AtoCuGKWh0dHA6Ly9jcmwubGxhbWEucGUvbGxhbWFwZXN0YW5kYXJkY2EuY3JsMB0GA1UdDgQWBBR3L9JAQI9sDVqKaFfos5B7HipsfTAOBgNVHQ8BAf8EBAMCBsAwDQYJKoZIhvcNAQELBQADggEBAJ1YKTH+l7itOtPBbDa/jbVRsJ5ctDS0FpV911VUQbe8A8zLpgLLO8+4RMpfvZIaBkkA+9bBsL72RlvDt28WCrDa8C5SUDJ8ksAQjrihNuK6WR7vAthnvoeucT8oDrIkDZH0NpdP+oyRzocOs/8JFRzZWwzYcxyMcmb1SAMpJVeOs4nutSh7dSaS5ePekqJTt0k3/3FQF/x91P+F7qiO0vpD4F9GHEBcUy3yaMrkowbRaym0jrn9NNyFNpzCT4Fvcvy32lc+t7BeM+XqaGwX+2WJGBeB8sJnMBUy2mQRQwg6Kyslqo7FUUb7NLRN/edYNRsWJDH/LUtNHDxUFtwaULo=</ds:X509Certificate></ds:X509Data></ds:KeyInfo></ds:Signature></ext:ExtensionContent>
+    </ext:UBLExtension>
+  </ext:UBLExtensions>
+  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+  <cbc:CustomizationID>2.0</cbc:CustomizationID>
+  <cbc:ID>F001-2182</cbc:ID>
+  <cbc:IssueDate>2025-12-26</cbc:IssueDate>
+  <cbc:IssueTime>15:48:11</cbc:IssueTime>
+  <cbc:DueDate>2026-02-09</cbc:DueDate>
+  <cbc:InvoiceTypeCode listID="0101">01</cbc:InvoiceTypeCode>
+  <cbc:Note languageLocaleID="1000"><![CDATA[Doce mil ciento cuarenta y cinco  con 00/100 ]]></cbc:Note>
+  <cbc:DocumentCurrencyCode>PEN</cbc:DocumentCurrencyCode>
+  <cac:OrderReference>
+    <cbc:ID>00000984962025</cbc:ID>
+  </cac:OrderReference>
+  <cac:DespatchDocumentReference>
+    <cbc:ID>T002-00001840</cbc:ID>
+    <cbc:DocumentTypeCode>09</cbc:DocumentTypeCode>
+  </cac:DespatchDocumentReference>
+  <cac:Signature>
+    <cbc:ID>signatureFACTURALOPERU</cbc:ID>
+    <cbc:Note>FACTURALO</cbc:Note>
+    <cac:SignatoryParty>
+      <cac:PartyIdentification>
+        <cbc:ID>20523915127</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyName>
+        <cbc:Name><![CDATA[EGOLARTE SOCIEDAD ANONIMA CERRADA]]></cbc:Name>
+      </cac:PartyName>
+    </cac:SignatoryParty>
+    <cac:DigitalSignatureAttachment>
+      <cac:ExternalReference>
+        <cbc:URI>#signatureFACTURALOPERU</cbc:URI>
+      </cac:ExternalReference>
+    </cac:DigitalSignatureAttachment>
+  </cac:Signature>
+  <cac:AccountingSupplierParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="6">20523915127</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyName>
+        <cbc:Name><![CDATA[EGOLARTE SOCIEDAD ANONIMA CERRADA]]></cbc:Name>
+      </cac:PartyName>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName><![CDATA[EGOLARTE SOCIEDAD ANONIMA CERRADA]]></cbc:RegistrationName>
+        <cac:RegistrationAddress>
+          <cbc:ID>150101</cbc:ID>
+          <cbc:AddressTypeCode>0000</cbc:AddressTypeCode>
+          <cbc:CityName>Lima</cbc:CityName>
+          <cbc:CountrySubentity>LIMA</cbc:CountrySubentity>
+          <cbc:District>Lima</cbc:District>
+          <cac:AddressLine>
+            <cbc:Line><![CDATA[Jr. Manuel Jaramillo #885 - Zona A]]></cbc:Line>
+          </cac:AddressLine>
+          <cac:Country>
+            <cbc:IdentificationCode>PE</cbc:IdentificationCode>
+          </cac:Country>
+        </cac:RegistrationAddress>
+      </cac:PartyLegalEntity>
+      <cac:Contact>
+        <cbc:Telephone>970898433</cbc:Telephone>
+        <cbc:ElectronicMail>egolartesac@gmail.com</cbc:ElectronicMail>
+      </cac:Contact>
+    </cac:Party>
+  </cac:AccountingSupplierParty>
+  <cac:AccountingCustomerParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="6">20462509236</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName><![CDATA[UNIVERSIDAD TECNOLOGICA DEL PERU S.A.C. O UTP S.A.C.]]></cbc:RegistrationName>
+        <cac:RegistrationAddress>
+          <cbc:ID>150101</cbc:ID>
+          <cac:AddressLine>
+            <cbc:Line><![CDATA[CAL. NATALIO SANCHEZ NRO. 125 URB. SANTA BEATRIZ]]></cbc:Line>
+          </cac:AddressLine>
+          <cac:Country>
+            <cbc:IdentificationCode>PE</cbc:IdentificationCode>
+          </cac:Country>
+        </cac:RegistrationAddress>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:AccountingCustomerParty>
+  <cac:PaymentTerms>
+    <cbc:ID>FormaPago</cbc:ID>
+    <cbc:PaymentMeansID>Credito</cbc:PaymentMeansID>
+    <cbc:Amount currencyID="PEN">11780.65</cbc:Amount>
+  </cac:PaymentTerms>
+  <cac:PaymentTerms>
+    <cbc:ID>FormaPago</cbc:ID>
+    <cbc:PaymentMeansID>Cuota001</cbc:PaymentMeansID>
+    <cbc:Amount currencyID="PEN">11780.65</cbc:Amount>
+    <cbc:PaymentDueDate>2026-02-09</cbc:PaymentDueDate>
+  </cac:PaymentTerms>
+  <cac:AllowanceCharge>
+    <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+    <cbc:AllowanceChargeReasonCode>62</cbc:AllowanceChargeReasonCode>
+    <cbc:MultiplierFactorNumeric>0.03</cbc:MultiplierFactorNumeric>
+    <cbc:Amount currencyID="PEN">364.35</cbc:Amount>
+    <cbc:BaseAmount currencyID="PEN">12145</cbc:BaseAmount>
+  </cac:AllowanceCharge>
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="PEN">1852.63</cbc:TaxAmount>
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="PEN">10292.37</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="PEN">1852.63</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cac:TaxScheme>
+          <cbc:ID>1000</cbc:ID>
+          <cbc:Name>IGV</cbc:Name>
+          <cbc:TaxTypeCode>VAT</cbc:TaxTypeCode>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+  </cac:TaxTotal>
+  <cac:LegalMonetaryTotal>
+    <cbc:LineExtensionAmount currencyID="PEN">10292.37</cbc:LineExtensionAmount>
+    <cbc:TaxInclusiveAmount currencyID="PEN">12145.00</cbc:TaxInclusiveAmount>
+    <cbc:PayableAmount currencyID="PEN">12145</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+  <cac:InvoiceLine>
+    <cbc:ID>1</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="NIU">1.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="PEN">10292.37</cbc:LineExtensionAmount>
+    <cac:PricingReference>
+      <cac:AlternativeConditionPrice>
+        <cbc:PriceAmount currencyID="PEN">12145.0000000000</cbc:PriceAmount>
+        <cbc:PriceTypeCode>01</cbc:PriceTypeCode>
+      </cac:AlternativeConditionPrice>
+    </cac:PricingReference>
+    <cac:TaxTotal>
+      <cbc:TaxAmount currencyID="PEN">1852.63</cbc:TaxAmount>
+      <cac:TaxSubtotal>
+        <cbc:TaxableAmount currencyID="PEN">10292.37</cbc:TaxableAmount>
+        <cbc:TaxAmount currencyID="PEN">1852.63</cbc:TaxAmount>
+        <cac:TaxCategory>
+          <cbc:Percent>18.00</cbc:Percent>
+          <cbc:TaxExemptionReasonCode>10</cbc:TaxExemptionReasonCode>
+          <cac:TaxScheme>
+            <cbc:ID>1000</cbc:ID>
+            <cbc:Name>IGV</cbc:Name>
+            <cbc:TaxTypeCode>VAT</cbc:TaxTypeCode>
+          </cac:TaxScheme>
+        </cac:TaxCategory>
+      </cac:TaxSubtotal>
+    </cac:TaxTotal>
+    <cac:Item>
+      <cbc:Description><![CDATA[PARED DE CORCHO PEGADO A MURO DE 2.85 X 6.94 MT]]></cbc:Description>
+      <cac:SellersItemIdentification>
+        <cbc:ID>01885</cbc:ID>
+      </cac:SellersItemIdentification>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="PEN">10292.3728813560</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+</Invoice>

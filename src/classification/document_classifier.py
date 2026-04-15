@@ -121,14 +121,20 @@ def classify_document(extraction_result: dict[str, Any]) -> ClassificationResult
 
     matches = _PATTERN.findall(norm_text)
 
-    # Dedup preservando orden de aparición
-    seen:           set[str]  = set()
+    # Cada match es un tuple de grupos; extraer el grupo no vacío
+    seen: set[str] = set()
     unique_matches: list[str] = []
     for m in matches:
-        key = m.lower()
-        if key not in seen:
-            seen.add(key)
-            unique_matches.append(key)
+        # m es un tuple, tomar el primer grupo no vacío
+        if isinstance(m, tuple):
+            key = next((g for g in m if g), None)
+        else:
+            key = m
+        if key:
+            key = key.lower()
+            if key not in seen:
+                seen.add(key)
+                unique_matches.append(key)
 
     is_cotizacion = len(unique_matches) > 0
 

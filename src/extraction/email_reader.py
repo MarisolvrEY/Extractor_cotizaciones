@@ -25,9 +25,8 @@ from config import settings
 
 logger = get_logger(__name__, settings.LOG_LEVEL)
 
-# Extensiones de adjuntos que vale la pena procesar con OCR
-_OCR_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif",
-                   ".docx", ".xlsx", ".pptx"}
+# Extensiones de adjuntos que se guardan (NO imágenes)
+_ATTACHMENT_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".pptx"}
 
 
 def _strip_html(html: str) -> str:
@@ -55,6 +54,7 @@ def _read_eml(path: Path, attachments_dir: Path) -> dict[str, Any]:
     body_parts: list[str] = []
     attachment_paths: list[str] = []
 
+
     for part in msg.walk():
         ct   = part.get_content_type()
         disp = str(part.get("Content-Disposition", "") or "")
@@ -63,7 +63,7 @@ def _read_eml(path: Path, attachments_dir: Path) -> dict[str, Any]:
             filename = part.get_filename()
             if filename:
                 ext = Path(filename).suffix.lower()
-                if ext in _OCR_EXTENSIONS:
+                if ext in _ATTACHMENT_EXTENSIONS:
                     dest = attachments_dir / filename
                     dest.write_bytes(part.get_payload(decode=True))
                     attachment_paths.append(str(dest))
@@ -113,7 +113,7 @@ def _read_msg(path: Path, attachments_dir: Path) -> dict[str, Any]:
     for att in m.attachments:
         if att.longFilename:
             ext = Path(att.longFilename).suffix.lower()
-            if ext in _OCR_EXTENSIONS:
+            if ext in _ATTACHMENT_EXTENSIONS:
                 dest = attachments_dir / att.longFilename
                 dest.write_bytes(att.data)
                 attachment_paths.append(str(dest))
@@ -177,10 +177,25 @@ def read_email(email_path: Path, attachments_dir: Path | None = None) -> dict[st
         else:
             raise ValueError(f"Extensión no soportada para email: {ext}")
 
-        result.update(data)
-        result["extraction_status"] = "success"
-        n_att = len(data["attachment_paths"])
-        logger.info(f"  ✓ {email_path.name} — {n_att} adjunto(s) para OCR")
+
+        # Guardar SOLO el cuerpo del correo como PDF (no .txt)
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas
+        import textwrap
+        pdf_filename = email_path.with_suffix("").name + "_cuerpo.pdf"
+        pdf_path = attachments_dir / pdf_filename
+        c = canvas.Canvas(str(pdf_path), pagesize=letter)
+        width, height = letter
+        textobject = c.beginText(40, height - 40)
+        wrapped_lines = []
+        for line in data["full_text"].splitlines():
+            wrapped_lines.extend(textwrap.wrap(line, width=100) or [""])
+        for line in wrapped_lines:
+            textobject.textLine(line)
+        c.drawText(textobject)
+        c.save()
+        result["email_pdf_path"] = str(pdf_path)
+        logger.info(f"  ✓ PDF del cuerpo guardado: {pdf_path.name}")
 
     except ImportError as exc:
         result["error_message"] = str(exc)

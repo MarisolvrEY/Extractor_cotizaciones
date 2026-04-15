@@ -73,10 +73,8 @@ class Settings:
         "presupuest",   # presupuesto, presupuestos, presupuestar
         "ofert",        # oferta, ofertas, ofertar
         "propuest",     # propuesta, propuestas comerciales/económicas
-        "tarif",        # tarifa, tarifas, tarifario
-        "valoriz",      # valorización, valorizar
-        "preci",        # precio, precios, lista de precios
-        "quot",         # quote, quotation (inglés)
+        # "tarif",        # tarifa, tarifas, tarifario
+        # "valoriz",      # valorización, valorizar
     ]
 
     def validate_paso1(self) -> None:

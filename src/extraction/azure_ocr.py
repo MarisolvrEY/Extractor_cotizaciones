@@ -162,11 +162,14 @@ def extract_pdf(file_path: Path) -> dict[str, Any]:
         logger.error(result["error_message"])
 
     except requests.HTTPError as exc:
-        result["error_message"] = (
-            f"HTTP {exc.response.status_code}: {exc.response.text[:300]}"
-        )
-        logger.error(f"  ✗ {file_path.name} — {result['error_message']}")
-        raise
+            result["error_message"] = (
+                f"HTTP {exc.response.status_code}: {exc.response.text[:300]}"
+            )
+            logger.error(f"  ✗ {file_path.name} — {result['error_message']}")
+            # 400 = archivo corrupto o formato no soportado → no reintentar, continuar
+            if exc.response.status_code == 400:
+                return result
+            raise  # otros errores (401, 429, 500…) sí se reintentan
 
     except Exception as exc:  # noqa: BLE001
         result["error_message"] = str(exc)
