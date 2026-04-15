@@ -11,11 +11,9 @@ Qué hace:
                    guarda un <nombre>_emailmeta.json con remitente, fecha, asunto
   - Resto        → copia plano tal cual
 
-Conversión de email a PDF (sin instalar nada externo, por orden de preferencia):
-  1. weasyprint  → pip install weasyprint   (mejor calidad)
-  2. xhtml2pdf   → pip install xhtml2pdf    (alternativa)
-  3. fpdf2       → pip install fpdf2        (solo texto plano)
-  4. fallback    → guarda como .txt si ninguna librería está disponible
+Conversión de email a PDF (librerías Python puras, sin dependencias del sistema):
+  1. xhtml2pdf  → pip install xhtml2pdf   (recomendada, HTML→PDF puro Python)    (alternativa)
+  2. fpdf2       → pip install fpdf2        (fallback, solo texto)        (solo texto plano)
 
 Output:
   data/procesables/                         ← archivos listos para OCR
@@ -73,16 +71,6 @@ def _strip_html(html: str) -> str:
 
 # ─── Conversión HTML → PDF (sin LibreOffice) ──────────────────────────────────
 
-def _html_a_pdf_weasyprint(html: str, dest: Path) -> bool:
-    try:
-        from weasyprint import HTML  # type: ignore
-        HTML(string=html).write_pdf(str(dest))
-        return True
-    except ImportError:
-        return False
-    except Exception as exc:
-        logger.debug(f"    weasyprint error: {exc}")
-        return False
 
 
 def _html_a_pdf_xhtml2pdf(html: str, dest: Path) -> bool:
@@ -131,7 +119,7 @@ def _email_a_pdf(subject: str, sender: str, to: str, date: str,
                   body_text: str, body_html: str, dest: Path) -> bool:
     """
     Intenta convertir el email a PDF usando las librerías disponibles.
-    Orden: weasyprint → xhtml2pdf → fpdf2
+    Orden: xhtml2pdf → fpdf2
     Retorna True si alguna tuvo éxito.
     """
     # Construir HTML con cabecera formateada
@@ -152,9 +140,6 @@ def _email_a_pdf(subject: str, sender: str, to: str, date: str,
     {body_src}
     </body></html>"""
 
-    if _html_a_pdf_weasyprint(html, dest):
-        logger.debug("    → PDF via weasyprint")
-        return True
     if _html_a_pdf_xhtml2pdf(html, dest):
         logger.debug("    → PDF via xhtml2pdf")
         return True
@@ -166,13 +151,12 @@ def _email_a_pdf(subject: str, sender: str, to: str, date: str,
 
 def _detectar_motor_pdf() -> str:
     """Devuelve el nombre del motor PDF disponible, o 'ninguno'."""
-    for mod, name in [("weasyprint", "weasyprint"),
-                      ("xhtml2pdf",  "xhtml2pdf"),
-                      ("fpdf",       "fpdf2")]:
+    for mod, name in [("xhtml2pdf", "xhtml2pdf"),
+                      ("fpdf",      "fpdf2")]:
         try:
             __import__(mod)
             return name
-        except ImportError:
+        except (ImportError, OSError):
             continue
     return "ninguno"
 
@@ -349,7 +333,7 @@ def preparar(
         logger.info(f"  Motor PDF   : [green]{motor}[/green] → emails a PDF")
     else:
         logger.warning("  Motor PDF   : [yellow]ninguno instalado[/yellow] → emails a .txt")
-        logger.info("    Instalar: pip install weasyprint")
+        logger.info("    Instalar: pip install xhtml2pdf")
 
     tmp = Path(tempfile.mkdtemp(prefix="preparar_tmp_"))
     shutil.copytree(src, tmp / "input", dirs_exist_ok=True)
