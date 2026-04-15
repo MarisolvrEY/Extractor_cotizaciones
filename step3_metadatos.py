@@ -60,14 +60,31 @@ def extraer_metadatos(
     exitosos = 0
     errores  = 0
 
+# DESPUÉS
+    ocr_dir = settings.OUTPUT_OCR_DIR
+
     for archivo in archivos:
         logger.info(f"  → {archivo.name}")
         try:
             meta = extract_all(str(archivo))
+
+            # Fusionar email_meta si existe en el OCR JSON
+            ocr_json = ocr_dir / f"{archivo.stem}_ocr.json"
+            if ocr_json.exists():
+                import json as _json
+                ocr_data = _json.loads(ocr_json.read_text(encoding="utf-8"))
+                email_meta = ocr_data.get("email_meta")
+                if email_meta:
+                    meta["email_remitente"] = email_meta.get("de", "")
+                    meta["email_destinatario"] = email_meta.get("para", "")
+                    meta["email_asunto"]    = email_meta.get("asunto", "")
+                    meta["email_fecha"]     = email_meta.get("fecha", "")
+                    meta["email_origen"]    = email_meta.get("origen", "")
+
             records.append(meta)
             save_json(meta, dst, f"{archivo.stem}_meta.json")
             exitosos += 1
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(f"  ⚠ {archivo.name}: {exc}")
             records.append({"fs_nombre_archivo": archivo.name, "error_general": str(exc)})
             errores += 1

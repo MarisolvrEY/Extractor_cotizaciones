@@ -40,7 +40,7 @@ def clasificar(
 ) -> dict:
     settings.ensure_dirs()
     src_json = json_dir    or settings.OUTPUT_OCR_DIR
-    src_pdfs = input_dir   or settings.INPUT_DIR
+    src_pdfs = input_dir   or settings.PROCESABLES_DIR
     dst      = destino_dir or settings.COTIZACIONES_DIR
     dst.mkdir(parents=True, exist_ok=True)
 
@@ -71,10 +71,12 @@ def clasificar(
 
         if cls.is_cotizacion:
             # Buscar el PDF original por nombre
-            pdf_origen = next((f for f in src_pdfs.rglob(file_name) if f.is_file()), None)
-            if not pdf_origen:
-                logger.warning(f"  ⚠ PDF no encontrado: {pdf_origen}")
-                sin_pdf += 1
+            pdf_origen = src_pdfs / file_name
+            if not pdf_origen.exists():
+                pdf_origen = None
+                if not pdf_origen:
+                    logger.warning(f"  ⚠ PDF no encontrado: {src_pdfs / file_name}")
+                    sin_pdf += 1
                 continue
 
             shutil.copy2(pdf_origen, dst / pdf_origen.name)
