@@ -5,14 +5,22 @@ PASO 0 — Aplana todos los archivos de data/input/ en data/procesables/.
 
 Qué hace:
   - Recorre data/input/ recursivamente
-  - ZIP / RAR  → extrae el contenido (maneja anidados con varias pasadas)
-  - .eml / .msg → extrae cuerpo como .txt + cada adjunto como archivo suelto
-                  (las imágenes adjuntas también se guardan)
-  - Resto       → copia plano a data/procesables/
-  - Si dos archivos tienen el mismo nombre agrega sufijo numérico
+  - ZIP / RAR    → extrae el contenido (maneja anidados)
+  - .eml / .msg  → convierte el cuerpo del email a PDF
+                   extrae adjuntos que NO son imágenes (pdf, docx, xlsx, pptx…)
+                   guarda un <nombre>_emailmeta.json con remitente, fecha, asunto
+  - Resto        → copia plano tal cual
+
+Conversión de email a PDF:
+  Usa LibreOffice en modo headless.
+    Windows : https://www.libreoffice.org/download
+    Mac     : brew install libreoffice
+    Linux   : apt install libreoffice
+  Si LibreOffice no está disponible, guarda el cuerpo como .txt (fallback).
 
 Output:
-  data/procesables/    ← todo al mismo nivel, listo para OCR
+  data/procesables/                      ← archivos al mismo nivel listos para OCR
+  data/procesables/<nombre>_emailmeta.json  ← metadatos del email (remitente, fecha…)
 
 Uso:
   python step0_preparar.py
@@ -23,8 +31,10 @@ from __future__ import annotations
 import argparse
 import email as email_lib
 import email.policy
+import json
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import zipfile
@@ -36,20 +46,20 @@ from src.utils.logger import get_logger
 
 logger = get_logger("paso0", settings.LOG_LEVEL)
 
-_EMAIL_EXTS    = {".eml", ".msg"}
-_ARCHIVE_EXTS  = {".zip", ".rar"}
-_OTHER_EXTS    = SUPPORTED_EXTENSIONS - _EMAIL_EXTS   # archivos que van directo a procesables
+_EMAIL_EXTS   = {".eml", ".msg"}
+_ARCHIVE_EXTS = {".zip", ".rar"}
+_IMAGE_EXTS   = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".gif"}
+# Adjuntos de email que SÍ se extraen (todo excepto imágenes)
+_ATT_EXTS     = SUPPORTED_EXTENSIONS - _EMAIL_EXTS - _IMAGE_EXTS
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _unique_dest(dest_dir: Path, filename: str) -> Path:
-    """Devuelve una ruta libre de colisiones en dest_dir."""
     dest = dest_dir / filename
     if not dest.exists():
         return dest
-    stem    = Path(filename).stem
-    ext     = Path(filename).suffix
+    stem, ext = Path(filename).stem, Path(filename).suffix
     counter = 2
     while True:
         candidate = dest_dir / f"{stem}_{counter}{ext}"
@@ -60,91 +70,123 @@ def _unique_dest(dest_dir: Path, filename: str) -> Path:
 
 def _strip_html(html: str) -> str:
     text = re.sub(r"<[^>]+>", " ", html)
-    text = re.sub(r"&nbsp;", " ", text)
-    text = re.sub(r"&amp;",  "&", text)
-    text = re.sub(r"&lt;",   "<", text)
-    text = re.sub(r"&gt;",   ">", text)
+    for ent, rep in [("&nbsp;", " "), ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">")]:
+        text = text.replace(ent, rep)
     return re.sub(r"\s+", " ", text).strip()
+
+
+# ─── LibreOffice ──────────────────────────────────────────────────────────────
+
+def _libreoffice_cmd() -> str | None:
+    """Retorna el comando de LibreOffice disponible, o None si no está instalado."""
+    for cmd in ("libreoffice", "soffice"):
+        try:
+            subprocess.run([cmd, "--version"], capture_output=True, check=True)
+            return cmd
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            continue
+    return None
+
+
+def _html_a_pdf(html_content: str, dest_path: Path, lo_cmd: str) -> bool:
+    """Convierte HTML a PDF usando LibreOffice. Retorna True si tuvo éxito."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_html = Path(tmp) / "email.html"
+        tmp_html.write_text(html_content, encoding="utf-8")
+        try:
+            result = subprocess.run(
+                [lo_cmd, "--headless", "--convert-to", "pdf",
+                 "--outdir", str(tmp), str(tmp_html)],
+                capture_output=True, timeout=120,
+            )
+            if result.returncode == 0:
+                generated = Path(tmp) / "email.pdf"
+                if generated.exists():
+                    shutil.copy2(generated, dest_path)
+                    return True
+        except subprocess.TimeoutExpired:
+            logger.warning("  ⚠ Timeout en conversión LibreOffice")
+    return False
 
 
 # ─── ZIP / RAR ────────────────────────────────────────────────────────────────
 
 def _extraer_zip(zip_path: Path, dest_dir: Path) -> bool:
-    """Extrae un ZIP en dest_dir. Retorna True si tuvo éxito."""
     try:
         with zipfile.ZipFile(zip_path, "r") as zf:
-            # Omitir artefactos de macOS
             members = [m for m in zf.namelist() if "__MACOSX" not in m]
             zf.extractall(dest_dir, members=members)
         return True
     except Exception as exc:
-        logger.warning(f"  ⚠ No se pudo extraer ZIP {zip_path.name}: {exc}")
+        r = subprocess.run(f'unzip -o -q "{zip_path}" -d "{dest_dir}"',
+                           shell=True, capture_output=True)
+        if r.returncode in (0, 1):
+            return True
+        logger.warning(f"  ⚠ ZIP {zip_path.name}: {exc}")
         return False
 
 
 def _extraer_rar(rar_path: Path, dest_dir: Path) -> bool:
-    """Extrae un RAR en dest_dir. Requiere: pip install rarfile + unrar en PATH."""
     try:
         import rarfile  # type: ignore
         with rarfile.RarFile(rar_path, "r") as rf:
             rf.extractall(dest_dir)
         return True
     except ImportError:
-        logger.warning("  ⚠ Para .rar instala: pip install rarfile  (y unrar en el sistema)")
+        logger.warning("  ⚠ .rar: pip install rarfile  +  unrar en el sistema")
         return False
     except Exception as exc:
-        logger.warning(f"  ⚠ No se pudo extraer RAR {rar_path.name}: {exc}")
+        logger.warning(f"  ⚠ RAR {rar_path.name}: {exc}")
         return False
 
 
 def _descomprimir_recursivo(src_dir: Path) -> int:
-    """
-    Busca y extrae todos los ZIP/RAR en src_dir (varias pasadas para manejar anidados).
-    Elimina el archivo comprimido tras extraerlo.
-    Retorna el total de archivos extraídos.
-    """
     total = 0
     while True:
-        archivos = [
-            f for f in src_dir.rglob("*")
-            if f.is_file() and f.suffix.lower() in _ARCHIVE_EXTS
-            and "__MACOSX" not in str(f)
-        ]
+        archivos = [f for f in src_dir.rglob("*")
+                    if f.is_file() and f.suffix.lower() in _ARCHIVE_EXTS
+                    and "__MACOSX" not in str(f)]
         if not archivos:
             break
-
-        extraidos_en_pasada = 0
-        for archivo in archivos:
-            dest = archivo.parent
-            if archivo.suffix.lower() == ".zip":
-                ok = _extraer_zip(archivo, dest)
-            else:
-                ok = _extraer_rar(archivo, dest)
-
+        extraidos = 0
+        for f in archivos:
+            ok = _extraer_zip(f, f.parent) if f.suffix.lower() == ".zip" \
+                 else _extraer_rar(f, f.parent)
             if ok:
-                archivo.unlink()
-                extraidos_en_pasada += 1
+                f.unlink()
+                extraidos += 1
                 total += 1
-                logger.debug(f"    extraído → {archivo.name}")
-
-        if extraidos_en_pasada == 0:
-            break  # sin progreso, evitar bucle infinito
-
-    # Limpiar carpetas __MACOSX si quedaron
-    for macos_dir in src_dir.rglob("__MACOSX"):
-        if macos_dir.is_dir():
-            shutil.rmtree(macos_dir, ignore_errors=True)
-
+        if extraidos == 0:
+            break
+    for d in src_dir.rglob("__MACOSX"):
+        if d.is_dir():
+            shutil.rmtree(d, ignore_errors=True)
     return total
 
 
-# ─── Emails ───────────────────────────────────────────────────────────────────
+# ─── Email → PDF ──────────────────────────────────────────────────────────────
 
-def _procesar_eml(path: Path, dest_dir: Path) -> list[Path]:
+def _construir_html_email(subject: str, sender: str, to: str,
+                          date: str, body: str, is_html: bool) -> str:
+    """Construye un HTML bien formateado con los datos del email."""
+    header = (
+        f"<div style='font-family:Arial;border-bottom:2px solid #ccc;padding-bottom:8px;margin-bottom:16px'>"
+        f"<b>Asunto:</b> {subject}<br>"
+        f"<b>De:</b> {sender}<br>"
+        f"<b>Para:</b> {to}<br>"
+        f"<b>Fecha:</b> {date}"
+        f"</div>"
+    )
+    body_html = body if is_html else f"<pre style='font-family:Arial;white-space:pre-wrap'>{body}</pre>"
+    return f"<html><body style='font-family:Arial;padding:20px'>{header}{body_html}</body></html>"
+
+
+def _procesar_eml(path: Path, dest_dir: Path, lo_cmd: str | None) -> tuple[list[Path], dict]:
     """
-    Extrae de un .eml:
-      - cuerpo como <nombre>_cuerpo.txt
-      - cada adjunto soportado (PDF, imágenes, Office, etc.) como archivo suelto
+    Procesa un .eml:
+      - Convierte el cuerpo a PDF (o .txt si no hay LibreOffice)
+      - Extrae adjuntos que no sean imágenes
+      - Retorna (archivos_escritos, email_meta)
     """
     raw = path.read_bytes()
     msg = email_lib.message_from_bytes(raw, policy=email_lib.policy.default)
@@ -154,8 +196,9 @@ def _procesar_eml(path: Path, dest_dir: Path) -> list[Path]:
     to      = str(msg.get("To",      "") or "")
     date    = str(msg.get("Date",    "") or "")
 
-    body_parts: list[str] = []
-    escritos:   list[Path] = []
+    body_text = ""
+    body_html = ""
+    escritos: list[Path] = []
 
     for part in msg.walk():
         ct   = part.get_content_type()
@@ -166,36 +209,53 @@ def _procesar_eml(path: Path, dest_dir: Path) -> list[Path]:
             if filename:
                 ext  = Path(filename).suffix.lower()
                 data = part.get_payload(decode=True)
-                # Guardamos todo adjunto soportado: PDFs, imágenes, Office
-                if ext in _OTHER_EXTS and data:
+                if ext in _ATT_EXTS and data:
                     dest = _unique_dest(dest_dir, filename)
                     dest.write_bytes(data)
                     escritos.append(dest)
-                    logger.debug(f"    adjunto email → {dest.name}")
-
-        elif ct == "text/plain":
+                    logger.debug(f"    adjunto → {dest.name}")
+        elif ct == "text/plain" and not body_text:
             payload = part.get_payload(decode=True)
             if payload:
-                body_parts.append(payload.decode("utf-8", errors="replace"))
-
-        elif ct == "text/html" and not body_parts:
+                body_text = payload.decode("utf-8", errors="replace")
+        elif ct == "text/html" and not body_html:
             payload = part.get_payload(decode=True)
             if payload:
-                body_parts.append(_strip_html(payload.decode("utf-8", errors="replace")))
+                body_html = payload.decode("utf-8", errors="replace")
 
-    body    = "\n".join(body_parts).strip()
-    content = (
-        f"Asunto: {subject}\nDe: {sender}\nPara: {to}\nFecha: {date}\n\n{body}"
-    )
-    txt_dest = _unique_dest(dest_dir, f"{path.stem}_cuerpo.txt")
-    txt_dest.write_text(content, encoding="utf-8")
-    escritos.append(txt_dest)
+    # Convertir cuerpo a PDF
+    body_src    = body_html if body_html else body_text
+    is_html     = bool(body_html)
+    html_content = _construir_html_email(subject, sender, to, date, body_src, is_html)
 
-    return escritos
+    pdf_dest = _unique_dest(dest_dir, f"{path.stem}.pdf")
+    if lo_cmd and _html_a_pdf(html_content, pdf_dest, lo_cmd):
+        escritos.append(pdf_dest)
+        logger.debug(f"    email → PDF: {pdf_dest.name}")
+    else:
+        # Fallback: guardar como .txt
+        txt_dest = _unique_dest(dest_dir, f"{path.stem}_cuerpo.txt")
+        txt_dest.write_text(
+            f"Asunto: {subject}\nDe: {sender}\nPara: {to}\nFecha: {date}\n\n{body_text}",
+            encoding="utf-8",
+        )
+        escritos.append(txt_dest)
+        if lo_cmd is None:
+            logger.debug(f"    email → TXT (sin LibreOffice): {txt_dest.name}")
+
+    email_meta = {
+        "tipo":    "email",
+        "asunto":  subject,
+        "de":      sender,
+        "para":    to,
+        "fecha":   date,
+        "origen":  path.name,
+    }
+    return escritos, email_meta
 
 
-def _procesar_msg(path: Path, dest_dir: Path) -> list[Path]:
-    """Extrae cuerpo + adjuntos de un .msg de Outlook."""
+def _procesar_msg(path: Path, dest_dir: Path, lo_cmd: str | None) -> tuple[list[Path], dict]:
+    """Procesa un .msg de Outlook: cuerpo → PDF + adjuntos no-imagen."""
     try:
         import extract_msg  # type: ignore
     except ImportError:
@@ -207,25 +267,46 @@ def _procesar_msg(path: Path, dest_dir: Path) -> list[Path]:
     to      = m.to      or ""
     date    = str(m.date or "")
     body    = (m.body   or "").strip()
+    body_html = (m.htmlBody or b"").decode("utf-8", errors="replace") if hasattr(m, "htmlBody") else ""
 
     escritos: list[Path] = []
 
     for att in m.attachments:
         filename = att.longFilename or att.shortFilename or ""
-        if filename:
+        if filename and att.data:
             ext = Path(filename).suffix.lower()
-            if ext in _OTHER_EXTS and att.data:
+            if ext in _ATT_EXTS:
                 dest = _unique_dest(dest_dir, filename)
                 dest.write_bytes(att.data)
                 escritos.append(dest)
-                logger.debug(f"    adjunto msg → {dest.name}")
+                logger.debug(f"    adjunto → {dest.name}")
 
-    content  = f"Asunto: {subject}\nDe: {sender}\nPara: {to}\nFecha: {date}\n\n{body}"
-    txt_dest = _unique_dest(dest_dir, f"{path.stem}_cuerpo.txt")
-    txt_dest.write_text(content, encoding="utf-8")
-    escritos.append(txt_dest)
+    body_src     = body_html if body_html else body
+    is_html      = bool(body_html)
+    html_content = _construir_html_email(subject, sender, to, date, body_src, is_html)
 
-    return escritos
+    pdf_dest = _unique_dest(dest_dir, f"{path.stem}.pdf")
+    if lo_cmd and _html_a_pdf(html_content, pdf_dest, lo_cmd):
+        escritos.append(pdf_dest)
+    else:
+        txt_dest = _unique_dest(dest_dir, f"{path.stem}_cuerpo.txt")
+        txt_dest.write_text(
+            f"Asunto: {subject}\nDe: {sender}\nPara: {to}\nFecha: {date}\n\n{body}",
+            encoding="utf-8",
+        )
+        escritos.append(txt_dest)
+
+    m.close()
+
+    email_meta = {
+        "tipo":   "email",
+        "asunto": subject,
+        "de":     sender,
+        "para":   to,
+        "fecha":  date,
+        "origen": path.name,
+    }
+    return escritos, email_meta
 
 
 # ─── Principal ────────────────────────────────────────────────────────────────
@@ -239,23 +320,27 @@ def preparar(
     dst = destino_dir or settings.PROCESABLES_DIR
     dst.mkdir(parents=True, exist_ok=True)
 
+    lo_cmd = _libreoffice_cmd()
+
     logger.info("=" * 60)
     logger.info("  PASO 0 — Preparar archivos")
     logger.info("=" * 60)
-    logger.info(f"  Origen  : {src}  (recursivo)")
-    logger.info(f"  Destino : {dst}  (un solo nivel)")
+    logger.info(f"  Origen      : {src}  (recursivo)")
+    logger.info(f"  Destino     : {dst}  (un solo nivel)")
+    if lo_cmd:
+        logger.info(f"  LibreOffice : [green]disponible[/green] → emails a PDF")
+    else:
+        logger.warning("  LibreOffice : [yellow]no encontrado[/yellow] → emails a .txt")
+        logger.info("    Instalar: https://www.libreoffice.org/download")
 
-    # ── 1. Extraer ZIP / RAR en un directorio temporal ────────────────────
-    # Copiamos input a un tmp para no modificar el original
     tmp = Path(tempfile.mkdtemp(prefix="preparar_tmp_"))
     shutil.copytree(src, tmp / "input", dirs_exist_ok=True)
     trabajo = tmp / "input"
 
     n_zips = _descomprimir_recursivo(trabajo)
     if n_zips:
-        logger.info(f"\n  Archivos comprimidos extraídos: {n_zips}")
+        logger.info(f"\n  Comprimidos extraídos: {n_zips}")
 
-    # ── 2. Recolectar todo lo que quedó (incluyendo lo descomprimido) ─────
     todos = sorted(
         f for f in trabajo.rglob("*")
         if f.is_file()
@@ -268,10 +353,7 @@ def preparar(
         shutil.rmtree(tmp, ignore_errors=True)
         return {"total": 0, "copiados": 0, "emails": 0, "adjuntos": 0, "errores": 0}
 
-    copiados = 0
-    emails   = 0
-    adjuntos = 0
-    errores  = 0
+    copiados = emails = adjuntos = errores = 0
 
     logger.info(f"\nArchivos a procesar: {len(todos)}\n")
 
@@ -280,22 +362,32 @@ def preparar(
         try:
             if ext in _EMAIL_EXTS:
                 if ext == ".eml":
-                    escritos = _procesar_eml(archivo, dst)
+                    escritos, meta = _procesar_eml(archivo, dst, lo_cmd)
                 else:
-                    escritos = _procesar_msg(archivo, dst)
+                    escritos, meta = _procesar_msg(archivo, dst, lo_cmd)
 
-                n_adj = len([e for e in escritos if e.suffix.lower() != ".txt"])
+                # Guardar _emailmeta.json junto al PDF/txt para que step1 lo lea
+                pdf_escritos = [e for e in escritos if e.suffix.lower() in (".pdf", ".txt")
+                                and "adjunto" not in e.name]
+                if pdf_escritos:
+                    meta_path = dst / f"{pdf_escritos[0].stem}_emailmeta.json"
+                    meta_path.write_text(
+                        json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
+                    )
+
+                n_adj = len([e for e in escritos
+                             if e.suffix.lower() not in (".pdf", ".txt")])
                 logger.info(
-                    f"  [cyan]✉ email[/cyan]  {archivo.name}  "
-                    f"→ cuerpo.txt + {n_adj} adjunto(s)"
+                    f"  [cyan]✉[/cyan]  {archivo.name}  "
+                    f"→ {'PDF' if lo_cmd else 'TXT'} + {n_adj} adjunto(s)"
                 )
                 emails   += 1
                 adjuntos += n_adj
 
-            elif ext in _OTHER_EXTS:
+            else:
                 dest = _unique_dest(dst, archivo.name)
                 shutil.copy2(archivo, dest)
-                logger.info(f"  [green]✓[/green]  {archivo.name}  →  {dest.name}")
+                logger.info(f"  [green]✓[/green]  {archivo.name}")
                 copiados += 1
 
         except Exception as exc:  # noqa: BLE001
@@ -304,29 +396,21 @@ def preparar(
 
     shutil.rmtree(tmp, ignore_errors=True)
 
-    total_dest = copiados + emails + adjuntos
-
     logger.info("\n" + "=" * 60)
-    logger.info(f"  Comprimidos extraídos  : {n_zips}")
-    logger.info(f"  Archivos copiados      : [green]{copiados}[/green]")
-    logger.info(f"  Emails procesados      : {emails}")
-    logger.info(f"  Adjuntos de emails     : {adjuntos}  (PDFs, imágenes, Office)")
-    logger.info(f"  Errores                : {errores}")
-    logger.info(f"  Total en procesables/  : {total_dest}")
+    logger.info(f"  Comprimidos extraídos : {n_zips}")
+    logger.info(f"  Archivos copiados     : [green]{copiados}[/green]")
+    logger.info(f"  Emails procesados     : {emails}")
+    logger.info(f"  Adjuntos extraídos    : {adjuntos}")
+    logger.info(f"  Errores               : {errores}")
     logger.info("=" * 60)
 
-    return {
-        "total":    len(todos),
-        "copiados": copiados,
-        "emails":   emails,
-        "adjuntos": adjuntos,
-        "errores":  errores,
-    }
+    return {"total": len(todos), "copiados": copiados,
+            "emails": emails, "adjuntos": adjuntos, "errores": errores}
 
 
 def _args():
     p = argparse.ArgumentParser(
-        description="Paso 0: aplana archivos (extrae ZIP/RAR, procesa emails)."
+        description="Paso 0: aplana archivos, descomprime ZIP/RAR, emails → PDF."
     )
     p.add_argument("--input",   type=Path, default=None)
     p.add_argument("--destino", type=Path, default=None)
