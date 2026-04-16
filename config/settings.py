@@ -77,6 +77,19 @@ class Settings:
         # "valoriz",      # valorización, valorizar
     ]
 
+
+    # Documentos que se EXCLUYEN aunque tengan keywords de cotización
+    EXCLUSION_KEYWORDS: list[str] = [
+    "factur",       # factura, facturas, facturar, facturado
+    "orden de compra",
+    "orden compra",
+    "purchase order",
+    "nota de venta",
+    "nota venta",
+    "boleta",
+    "recibo",   
+    "comprobante de pago"]
+
     def validate_paso1(self) -> None:
         errors = []
         if not self.AZURE_OCR_ENDPOINT:

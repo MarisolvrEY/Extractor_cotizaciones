@@ -44,14 +44,25 @@ def _normalizar(texto: str) -> str:
 # ── Compilar patrón con keywords normalizadas ─────────────────────────────────
 # Se normaliza cada keyword igual que el texto → comparación siempre consistente
 # Se usa \b solo al inicio para que "cotiz" matchee "cotización" (sufijo libre)
-
 _KEYWORDS_NORM: list[str] = [_normalizar(kw) for kw in settings.COTIZACION_KEYWORDS]
 
-# Separar keywords en dos grupos:
-#   - raíces (una sola palabra): usan \b al inicio
-#   - frases (contienen espacio): búsqueda literal sin \b
-_stems  = [kw for kw in _KEYWORDS_NORM if " " not in kw]
+_stems   = [kw for kw in _KEYWORDS_NORM if " " not in kw]
 _phrases = [kw for kw in _KEYWORDS_NORM if " " in kw]
+
+# Patrón de exclusión — si aparece esto, NO es cotización
+_EXCLUSION_NORM: list[str] = [_normalizar(kw) for kw in settings.EXCLUSION_KEYWORDS]
+_excl_stems   = [kw for kw in _EXCLUSION_NORM if " " not in kw]
+_excl_phrases = [kw for kw in _EXCLUSION_NORM if " " in kw]
+
+_excl_parts: list[str] = []
+if _excl_stems:
+    _excl_parts.append(r"\b(" + "|".join(re.escape(s) for s in _excl_stems) + r")")
+if _excl_phrases:
+    _excl_parts.append(r"(" + "|".join(re.escape(p) for p in _excl_phrases) + r")")
+
+_EXCLUSION_PATTERN: re.Pattern = re.compile(
+    "|".join(_excl_parts), flags=re.IGNORECASE
+) if _excl_parts else re.compile(r"(?!)")  # patrón vacío que nunca matchea
 
 _parts: list[str] = []
 if _stems:
@@ -136,7 +147,19 @@ def classify_document(extraction_result: dict[str, Any]) -> ClassificationResult
                 seen.add(key)
                 unique_matches.append(key)
 
-    is_cotizacion = len(unique_matches) > 0
+    # Verificar si tiene keywords de exclusión
+    excl_matches = _EXCLUSION_PATTERN.findall(norm_text)
+    excl_flat    = [s.lower() for match in excl_matches
+                    for s in (match if isinstance(match, tuple) else (match,)) if s]
+    is_excluido  = len(excl_flat) > 0
+    is_cotizacion = len(unique_matches) > 0 and not is_excluido
+
+    if is_excluido and len(unique_matches) > 0:
+        # findall devuelve tuplas cuando hay múltiples grupos → aplanar y filtrar vacíos
+        excl_flat = [s.lower() for match in excl_matches
+                    for s in (match if isinstance(match, tuple) else (match,)) if s]
+        note = f"Excluido — contiene: {list(set(excl_flat))}"
+        logger.info(f"  → {file_name}: [yellow]EXCLUIDO[/yellow] (tenía keywords pero también exclusiones)")
 
     if is_cotizacion:
         note = (

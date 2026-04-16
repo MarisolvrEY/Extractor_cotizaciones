@@ -38,7 +38,7 @@ data/output/reports/*.xlsx
 data/output/tables/*.csv
 data/procesables/
 data/input/
-
+data/cotizaciones_encontradas/
 # Logs
 logs/
 *.log
